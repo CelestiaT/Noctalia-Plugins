@@ -1,0 +1,176 @@
+id          = "celestiat/waterclock"
+name        = "WaterClock"
+version     = "1.0.0"
+plugin_api  = 36
+author      = "celestiat"
+license     = "MIT"
+description = "A rising-water timer overlay: click the bar widget and the water level climbs from the bottom to the top of the screen."
+icon        = "droplet"
+tags        = ["gaming", "utility", "bar", "countdown"]
+
+# ---------- timer ----------
+
+[[setting]]
+key         = "duration_min"
+type        = "int"
+label_key   = "settings.duration_min.label"
+default     = 25
+min         = 1
+max         = 180
+
+[[setting]]
+key         = "end_action"
+type        = "select"
+label_key   = "settings.end_action.label"
+default     = "stay"
+options     = [
+  { value = "stay", label_key = "settings.end_action.stay" },
+  { value = "hide", label_key = "settings.end_action.hide" },
+]
+
+[[setting]]
+key         = "static_level"
+type        = "int"
+label_key   = "settings.static_level.label"
+description_key = "settings.static_level.description"
+default     = 45
+min         = 0
+max         = 100
+
+# ---------- water color & fog ----------
+
+[[setting]]
+key       = "color_surface"
+type      = "color"
+label_key = "settings.color_surface.label"
+default   = "#3ec6e0"
+
+[[setting]]
+key       = "color_deep"
+type      = "color"
+label_key = "settings.color_deep.label"
+default   = "#032c54"
+
+[[setting]]
+key       = "fog_strength"
+type      = "int"
+label_key = "settings.fog_strength.label"
+default   = 55
+min       = 0
+max       = 100
+
+# ---------- waves ----------
+
+[[setting]]
+key       = "wave_amplitude"
+type      = "int"
+label_key = "settings.wave_amplitude.label"
+default   = 8
+min       = 0
+max       = 40
+
+[[setting]]
+key       = "wave_length"
+type      = "int"
+label_key = "settings.wave_length.label"
+default   = 640
+min       = 200
+max       = 1500
+
+[[setting]]
+key       = "wave_speed"
+type      = "int"
+label_key = "settings.wave_speed.label"
+default   = 35
+min       = 0
+max       = 100
+
+# ---------- caustics & rays ----------
+
+[[setting]]
+key       = "caustics_density"
+type      = "int"
+label_key = "settings.caustics_density.label"
+default   = 12
+min       = 0
+max       = 30
+
+[[setting]]
+key       = "caustics_strength"
+type      = "int"
+label_key = "settings.caustics_strength.label"
+default   = 55
+min       = 0
+max       = 100
+
+[[setting]]
+key       = "rays_density"
+type      = "int"
+label_key = "settings.rays_density.label"
+default   = 9
+min       = 0
+max       = 20
+
+[[setting]]
+key       = "rays_strength"
+type      = "int"
+label_key = "settings.rays_strength.label"
+default   = 50
+min       = 0
+max       = 100
+
+# ---------- bubbles & sparkle ----------
+
+[[setting]]
+key       = "bubbles"
+type      = "bool"
+label_key = "settings.bubbles.label"
+default   = true
+
+[[setting]]
+key       = "bubble_density"
+type      = "int"
+label_key = "settings.bubble_density.label"
+default   = 18
+min       = 0
+max       = 60
+
+[[setting]]
+key       = "sparkles"
+type      = "bool"
+label_key = "settings.sparkles.label"
+default   = true
+
+# ---------- performance & input ----------
+
+[[setting]]
+key       = "render_fps"
+type      = "select"
+label_key = "settings.render_fps.label"
+default   = "30"
+options   = [
+  { value = "15", label_key = "settings.render_fps.15" },
+  { value = "30", label_key = "settings.render_fps.30" },
+  { value = "60", label_key = "settings.render_fps.60" },
+]
+
+[[setting]]
+key       = "click_through"
+type      = "bool"
+label_key = "settings.click_through.label"
+default   = true
+
+# ---------- entries ----------
+
+[[widget]]
+id    = "toggle"
+entry = "widget.luau"
+
+[[layer]]
+id             = "water"
+entry          = "water.luau"
+layer          = "overlay"
+anchors        = ["top", "bottom", "left", "right"]
+click_through  = true
+keyboard       = "none"
+exclusive_zone = -1

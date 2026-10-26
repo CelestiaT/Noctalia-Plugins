@@ -4,6 +4,20 @@
 # subdirectory, and bump `version` / `updated_at` whenever a plugin changes.
 
 [[plugin]]
+id           = "celestiat/waterclock"
+name         = "WaterClock"
+version      = "1.0.0"
+updated_at   = 1793016000
+added_at     = 1793016000
+author       = "celestiat"
+license      = "MIT"
+icon         = "droplet"
+description  = "A rising-water timer overlay: click the bar widget and the water level climbs from the bottom to the top of the screen."
+deprecated   = false
+plugin_api   = 36
+tags         = ["countdown", "utility", "bar", "fun"]
+
+[[plugin]]
 id           = "celestiat/crosshair"
 name         = "Crosshair"
 version      = "1.0.0"
