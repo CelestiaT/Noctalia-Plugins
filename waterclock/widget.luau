@@ -23,7 +23,7 @@ end
 
 local function render()
   local running = noctalia.state.get("wc_running") == true
-  barWidget.setGlyph(running and "waves" or "droplet")
+  barWidget.setGlyph("droplet")
   barWidget.setGlyphColor(running and "#3ec6e0" or "on_surface")
   if running then
     local start = noctalia.state.get("wc_start")

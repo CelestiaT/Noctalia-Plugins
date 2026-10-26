@@ -6,7 +6,7 @@
 [[plugin]]
 id           = "celestiat/waterclock"
 name         = "WaterClock"
-version      = "1.0.0"
+version      = "1.0.1"
 updated_at   = 1793016000
 added_at     = 1793016000
 author       = "celestiat"

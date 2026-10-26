@@ -1,6 +1,6 @@
 id          = "celestiat/waterclock"
 name        = "WaterClock"
-version     = "1.0.0"
+version     = "1.0.1"
 plugin_api  = 36
 author      = "celestiat"
 license     = "MIT"

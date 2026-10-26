@@ -1,7 +1,10 @@
 --!nonstrict
 -- WaterClock layer：全屏 overlay 水面（纯风格化绘制，不采样背景）。
--- 定时运行时水位从 0% 线性升到 100%；每帧按 render_fps 节流重新生成 SVG。
--- 所有元素参数在 runtime 内固定（LCG 预生成），动画只推进时间 t，元素不跳变。
+-- 定时运行时水位从 0% 线性升到 100%；按 render_fps 节流重新生成 SVG。
+--
+-- 性能约束（重要）：渲染栈对 SVG 做软件光栅化，且交替文件名会绕过缓存整图重绘，
+-- 因此这里 ① 不使用任何 SVG 滤镜（柔光用多层描边模拟）② 以 960px 内部宽度低分辨率
+-- 生成图像，再由 ui.image fit="stretch" 拉伸到全屏（水体柔和，无损观感）。
 
 local TWO_PI = math.pi * 2
 
@@ -20,7 +23,7 @@ local function clamp(v, lo, hi)
   return v
 end
 
--- ---------- 稳定元素参数（每 runtime 生成一次） ----------
+-- ---------- 稳定元素参数（每 runtime 生成一次，动画只推进时间） ----------
 
 local CAUSTICS, RAYS, BUBBLES, SPARKLES, SPECKS = {}, {}, {}, {}, {}
 for i = 1, 30 do
@@ -92,7 +95,9 @@ local function levelNow(c, now_ms)
   return c.static_level
 end
 
--- ---------- SVG 生成 ----------
+-- ---------- SVG 生成（内部低分辨率画布） ----------
+
+local IW = 960
 
 local function waveY(x, y0, amp, wl, ph)
   return y0 + amp * math.sin(TWO_PI * x / wl + ph)
@@ -101,7 +106,7 @@ end
 
 local function wavePath(W, y0, amp, wl, ph)
   local out, n = {}, 0
-  for x = 0, W, 20 do
+  for x = 0, W, 24 do
     n = n + 1
     out[n] = string.format("%.1f %.1f", x, waveY(x, y0, amp, wl, ph))
   end
@@ -109,29 +114,32 @@ local function wavePath(W, y0, amp, wl, ph)
 end
 
 local function svgOf(c, W, H, level, t)
-  local wl_y = H - (level / 100) * H
-  local bh = H - wl_y
+  local IH = math.max(1, math.floor(IW * H / W + 0.5))
+  local s = IW / W                      -- 逻辑 px → 内部 px 缩放
+  local wl_y = IH - (level / 100) * IH
+  local bh = IH - wl_y
   local ph = t * c.wave_spd * 2
   local defs, body = {}, {}
 
-  -- 深度雾渐变
+  -- 深度雾
   defs[#defs + 1] = string.format(
     '<linearGradient id="fog" x1="0" y1="%.0f" x2="0" y2="%.0f" gradientUnits="userSpaceOnUse">'
     .. '<stop offset="0" stop-color="%s" stop-opacity="%.3f"/>'
     .. '<stop offset="0.45" stop-color="%s" stop-opacity="%.3f"/>'
     .. '<stop offset="1" stop-color="%s" stop-opacity="%.3f"/></linearGradient>',
-    wl_y, H,
+    wl_y, IH,
     c.color_surface, 0.38 * c.fog,
     c.color_deep, 0.58 * c.fog,
     c.color_deep, 0.88 * c.fog)
   body[#body + 1] = string.format('<rect x="0" y="%.1f" width="%d" height="%.1f" fill="url(#fog)"/>',
-    wl_y, W, bh)
+    wl_y, IW, bh)
 
-  if bh > 30 then
+  if bh > 30 * s then
     -- 体积光柱
     for i = 1, c.rays_n do
       local r = RAYS[i]
-      local x = r.x * W + math.sin(t * 0.3 + r.sway) * 30
+      local x = r.x * IW + math.sin(t * 0.3 + r.sway) * 30 * s
+      local w = r.w * s
       local y2 = wl_y + bh * r.reach
       defs[#defs + 1] = string.format(
         '<linearGradient id="ray%d" x1="0" y1="%.0f" x2="0" y2="%.0f" gradientUnits="userSpaceOnUse">'
@@ -140,28 +148,32 @@ local function svgOf(c, W, H, level, t)
         i, wl_y, y2, r.op * c.rays_k)
       body[#body + 1] = string.format(
         '<polygon points="%.0f,%.0f %.0f,%.0f %.0f,%.0f %.0f,%.0f" fill="url(#ray%d)"/>',
-        x - r.w / 2, wl_y, x + r.w / 2, wl_y, x + r.w * 0.9, y2, x - r.w * 0.9, y2, i)
+        x - w / 2, wl_y, x + w / 2, wl_y, x + w * 0.9, y2, x - w * 0.9, y2, i)
     end
 
-    -- 焦散：亮暗成对
+    -- 焦散：亮暗成对，宽窄双描边模拟柔光（无滤镜）
     for i = 1, c.caustics_n do
       local k = CAUSTICS[i]
-      local y0 = wl_y + 14 + k.dy * (bh - 50)
+      local y0 = wl_y + (14 + k.dy * (bh / s - 50)) * s
       local kp = k.ph + t * k.spd * c.wave_spd * 2
       local op = k.op * c.caustics_k
+      local amp, wlc, w = k.amp * s, k.wl * s, k.w * s
       body[#body + 1] = string.format(
-        '<path d="%s" fill="none" stroke="#e8fbff" stroke-opacity="%.3f" stroke-width="%.1f" filter="url(#cau)"/>',
-        wavePath(W, y0, k.amp, k.wl, kp), op, k.w)
+        '<path d="%s" fill="none" stroke="#e8fbff" stroke-opacity="%.3f" stroke-width="%.1f"/>',
+        wavePath(IW, y0, amp, wlc, kp), op * 0.35, w * 2.2)
       body[#body + 1] = string.format(
-        '<path d="%s" fill="none" stroke="#032a4a" stroke-opacity="%.3f" stroke-width="%.1f" filter="url(#cau)"/>',
-        wavePath(W, y0 + k.w * 1.6, k.amp, k.wl, kp), op * 0.8, k.w * 1.3)
+        '<path d="%s" fill="none" stroke="#e8fbff" stroke-opacity="%.3f" stroke-width="%.1f"/>',
+        wavePath(IW, y0, amp, wlc, kp), op, w)
+      body[#body + 1] = string.format(
+        '<path d="%s" fill="none" stroke="#032a4a" stroke-opacity="%.3f" stroke-width="%.1f"/>',
+        wavePath(IW, y0 + w * 1.6, amp, wlc, kp), op * 0.8, w * 1.3)
     end
 
     -- 悬浮微粒
     for i = 1, #SPECKS do
-      local s = SPECKS[i]
+      local sp = SPECKS[i]
       body[#body + 1] = string.format('<circle cx="%.0f" cy="%.0f" r="%.1f" fill="#eaffff" fill-opacity="%.2f"/>',
-        s.x * W, wl_y + 10 + s.y * (bh - 20), s.r, s.op * (0.4 + 0.6 * c.fog))
+        sp.x * IW, wl_y + (10 + sp.y * (bh / s - 20)) * s, sp.r * s, sp.op * (0.4 + 0.6 * c.fog))
     end
 
     -- 上升气泡
@@ -169,56 +181,56 @@ local function svgOf(c, W, H, level, t)
       for i = 1, c.bubble_n do
         local b = BUBBLES[i]
         local cycle = (t * b.spd + b.phase) % 1
-        local y = H - cycle * (bh + 30)
-        if y > wl_y + 6 then
-          local x = b.x * W + math.sin(cycle * 9 + b.phase * 6) * b.wob
+        local y = IH - cycle * (bh + 30 * s)
+        if y > wl_y + 6 * s then
+          local x = b.x * IW + math.sin(cycle * 9 + b.phase * 6) * b.wob * s
           local op = 0.35 + 0.35 * math.sin(cycle * math.pi)
+          local r = b.r * s * (0.55 + 0.45 * cycle)
           body[#body + 1] = string.format(
-            '<circle cx="%.0f" cy="%.0f" r="%.1f" fill="none" stroke="#e6fbff" stroke-opacity="%.2f" stroke-width="1.5"/>',
-            x, y, b.r * (0.55 + 0.45 * cycle), op)
+            '<circle cx="%.0f" cy="%.0f" r="%.1f" fill="none" stroke="#e6fbff" stroke-opacity="%.2f" stroke-width="%.1f"/>',
+            x, y, r, op, 1.5 * s)
           body[#body + 1] = string.format(
             '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#ffffff" fill-opacity="%.2f"/>',
-            x - b.r * 0.35, y - b.r * 0.35, b.r * 0.25, op * 0.8)
+            x - r * 0.35, y - r * 0.35, r * 0.25, op * 0.8)
         end
       end
     end
   end
 
-  -- 水面复合线：全反射暗带 / 天空反射亮带 / 主高光线 / 副线
-  local amp = c.wave_amp
-  local wl = c.wave_len
+  -- 水面复合线（多层描边模拟高光/柔光，无滤镜）
+  local amp, wlc = c.wave_amp * s, c.wave_len * s
   body[#body + 1] = string.format(
-    '<path d="%s L %d %.1f L 0 %.1f Z" fill="#02325a" fill-opacity="0.5" filter="url(#soft)"/>',
-    wavePath(W, wl_y, amp, wl, ph), W, wl_y + 26, wl_y + 26)
+    '<path d="%s L %d %.1f L 0 %.1f Z" fill="#02325a" fill-opacity="0.5"/>',
+    wavePath(IW, wl_y, amp, wlc, ph), IW, wl_y + 26 * s, wl_y + 26 * s)
   body[#body + 1] = string.format(
-    '<path d="%s L %d %.1f L 0 %.1f Z" fill="#cfeeff" fill-opacity="0.28" filter="url(#soft)"/>',
-    wavePath(W, wl_y - 10, amp, wl, ph), W, wl_y, wl_y)
+    '<path d="%s L %d %.1f L 0 %.1f Z" fill="#cfeeff" fill-opacity="0.28"/>',
+    wavePath(IW, wl_y - 10 * s, amp, wlc, ph), IW, wl_y, wl_y)
   body[#body + 1] = string.format(
-    '<path d="%s" fill="none" stroke="#f2fdff" stroke-opacity="0.95" stroke-width="2.6" filter="url(#soft)"/>',
-    wavePath(W, wl_y, amp, wl, ph))
+    '<path d="%s" fill="none" stroke="#9fe8ff" stroke-opacity="0.30" stroke-width="%.1f"/>',
+    wavePath(IW, wl_y, amp, wlc, ph), 10 * s)
   body[#body + 1] = string.format(
-    '<path d="%s" fill="none" stroke="#7fd8ff" stroke-opacity="0.5" stroke-width="1.6"/>',
-    wavePath(W, wl_y + 3, amp, wl, ph))
+    '<path d="%s" fill="none" stroke="#f2fdff" stroke-opacity="0.95" stroke-width="%.1f"/>',
+    wavePath(IW, wl_y, amp, wlc, ph), 2.6 * s)
+  body[#body + 1] = string.format(
+    '<path d="%s" fill="none" stroke="#7fd8ff" stroke-opacity="0.5" stroke-width="%.1f"/>',
+    wavePath(IW, wl_y + 3 * s, amp, wlc, ph), 1.6 * s)
 
   -- 水面闪点
   if c.sparkles_on then
     for i = 1, #SPARKLES do
       local sp = SPARKLES[i]
-      local x = sp.x * W
-      local y = waveY(x, wl_y, amp, wl, ph)
+      local x = sp.x * IW
+      local y = waveY(x, wl_y, amp, wlc, ph)
       local tw = 0.5 + 0.5 * math.sin(t * 3 + sp.tw)
       body[#body + 1] = string.format(
-        '<circle cx="%.0f" cy="%.1f" r="%.1f" fill="#ffffff" fill-opacity="%.2f" filter="url(#soft)"/>',
-        x, y, sp.r * (0.6 + 0.4 * tw), 0.35 + 0.6 * tw)
+        '<circle cx="%.0f" cy="%.1f" r="%.1f" fill="#ffffff" fill-opacity="%.2f"/>',
+        x, y, sp.r * s * (0.6 + 0.4 * tw), 0.35 + 0.6 * tw)
     end
   end
 
-  defs[#defs + 1] = '<filter id="soft" x="-20%" y="-300%" width="140%" height="700%"><feGaussianBlur stdDeviation="2.2"/></filter>'
-  defs[#defs + 1] = '<filter id="cau" x="-5%" y="-500%" width="110%" height="1100%"><feGaussianBlur stdDeviation="5"/></filter>'
-
   return string.format(
     '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d"><defs>%s</defs>%s</svg>',
-    W, H, W, H, table.concat(defs, ""), table.concat(body, ""))
+    IW, IH, IW, IH, table.concat(defs, ""), table.concat(body, ""))
 end
 
 -- ---------- 渲染 ----------

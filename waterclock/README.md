@@ -26,7 +26,7 @@ remaining. Fully click-through: the water never blocks your mouse.
    Click again while running to stop and reset.
 4. With no timer running, scroll the wheel over the widget to adjust this
    session's duration in one-minute steps (tooltip shows the current value).
-5. The widget tooltip shows a live countdown; the icon turns into waves while
+5. The widget tooltip shows a live countdown; the droplet icon turns cyan while
    running. When the timer completes, the water either stays full or hides,
    per the `end_action` setting.
 
