@@ -1,0 +1,17 @@
+# luau-lsp type stubs: fetched snapshot, not committed (single source of truth
+# is official-plugins)
+noctalia.d.luau
+
+# editor / tooling noise
+.luaurc.local
+.vscode/
+.idea/
+*.swp
+*~
+
+# python caches (if validator scripts get vendored later)
+__pycache__/
+*.pyc
+
+# OS noise
+.DS_Store
