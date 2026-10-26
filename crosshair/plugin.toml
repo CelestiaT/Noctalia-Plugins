@@ -1,0 +1,202 @@
+id          = "celestiat/crosshair"
+name        = "Crosshair"
+version     = "1.0.0"
+plugin_api  = 36
+author      = "celestiat"
+license     = "MIT"
+description = "Click-through fullscreen aiming crosshair on the overlay layer, toggled from a bar widget. Fully customizable."
+icon        = "crosshair"
+tags        = ["gaming", "utility", "bar"]
+
+# ================= Crosshair Settings =================
+
+[[setting]]
+key       = "color"
+type      = "color"
+label_key = "settings.color.label"
+default   = "#00E676"
+
+[[setting]]
+key       = "outline"
+type      = "bool"
+label_key = "settings.outline.label"
+default   = false
+
+[[setting]]
+key         = "outline_pct"
+type        = "int"
+label_key   = "settings.outline_opacity.label"
+default     = 60
+min         = 0
+max         = 100
+visible_when = { key = "outline", values = ["true"] }
+
+[[setting]]
+key         = "outline_thickness"
+type        = "int"
+label_key   = "settings.outline_thickness.label"
+default     = 1
+min         = 1
+max         = 10
+visible_when = { key = "outline", values = ["true"] }
+
+[[setting]]
+key       = "offset_x"
+type      = "int"
+label_key = "settings.offset_x.label"
+default   = 0
+min       = -300
+max       = 300
+
+[[setting]]
+key       = "offset_y"
+type      = "int"
+label_key = "settings.offset_y.label"
+default   = 0
+min       = -300
+max       = 300
+
+# -------------------- Center Crosshair --------------------
+
+[[setting]]
+key       = "center_enabled"
+type      = "bool"
+label_key = "settings.center_enabled.label"
+default   = true
+
+[[setting]]
+key          = "center_shape"
+type         = "select"
+label_key    = "settings.center_shape.label"
+default      = "cross"
+options      = [
+  { value = "cross", label_key = "settings.center_shape.cross" },
+  { value = "dot",   label_key = "settings.center_shape.dot" },
+  { value = "ring",  label_key = "settings.center_shape.ring" },
+  { value = "x",     label_key = "settings.center_shape.x" },
+]
+visible_when = { key = "center_enabled", values = ["true"] }
+
+[[setting]]
+key          = "center_pct"
+type         = "int"
+label_key    = "settings.center_opacity.label"
+default      = 100
+min          = 0
+max          = 100
+visible_when = { key = "center_enabled", values = ["true"] }
+
+[[setting]]
+key          = "center_thickness"
+type         = "int"
+label_key    = "settings.center_thickness.label"
+default      = 2
+min          = 1
+max          = 24
+visible_when = { key = "center_enabled", values = ["true"] }
+
+# ================= Inner Crosshair =================
+
+[[setting]]
+key       = "inner_enabled"
+type      = "bool"
+label_key = "settings.inner_enabled.label"
+default   = true
+
+[[setting]]
+key          = "inner_pct"
+type         = "int"
+label_key    = "settings.inner_opacity.label"
+default      = 100
+min          = 0
+max          = 100
+visible_when = { key = "inner_enabled", values = ["true"] }
+
+[[setting]]
+key          = "inner_length"
+type         = "int"
+label_key    = "settings.inner_length.label"
+default      = 6
+min          = 1
+max          = 120
+visible_when = { key = "inner_enabled", values = ["true"] }
+
+[[setting]]
+key          = "inner_thickness"
+type         = "int"
+label_key    = "settings.inner_thickness.label"
+default      = 2
+min          = 1
+max          = 24
+visible_when = { key = "inner_enabled", values = ["true"] }
+
+[[setting]]
+key          = "inner_offset"
+type         = "int"
+label_key    = "settings.inner_offset.label"
+default      = 6
+min          = 0
+max          = 240
+visible_when = { key = "inner_enabled", values = ["true"] }
+
+# ================= Outer Crosshair =================
+
+[[setting]]
+key       = "outer_enabled"
+type      = "bool"
+label_key = "settings.outer_enabled.label"
+default   = false
+
+[[setting]]
+key          = "outer_pct"
+type         = "int"
+label_key    = "settings.outer_opacity.label"
+default      = 100
+min          = 0
+max          = 100
+visible_when = { key = "outer_enabled", values = ["true"] }
+
+[[setting]]
+key          = "outer_length"
+type         = "int"
+label_key    = "settings.outer_length.label"
+default      = 14
+min          = 1
+max          = 120
+visible_when = { key = "outer_enabled", values = ["true"] }
+
+[[setting]]
+key          = "outer_thickness"
+type         = "int"
+label_key    = "settings.outer_thickness.label"
+default      = 2
+min          = 1
+max          = 24
+visible_when = { key = "outer_enabled", values = ["true"] }
+
+[[setting]]
+key          = "outer_offset"
+type         = "int"
+label_key    = "settings.outer_offset.label"
+default      = 20
+min          = 0
+max          = 240
+visible_when = { key = "outer_enabled", values = ["true"] }
+
+# ================= entries =================
+
+[[widget]]
+id    = "toggle"
+entry = "widget.luau"
+
+# overlay 层 surface：四边锚定 + 尺寸 0 = 全屏拉伸；exclusive_zone = -1 忽略其它 surface（如栏）的
+# 独占区，保证几何基准是物理屏幕而非工作区（否则"居中"会被栏空间顶偏）。
+# click_through = true 空输入区域，鼠标完全穿透。
+[[layer]]
+id             = "overlay"
+entry          = "dot.luau"
+layer          = "overlay"
+anchors        = ["top", "bottom", "left", "right"]
+click_through  = true
+keyboard       = "none"
+exclusive_zone = -1

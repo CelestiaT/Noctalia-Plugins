@@ -1,0 +1,18 @@
+# Noctalia plugin catalog for CelestiaT/Noctalia-Plugins.
+# This file indexes every plugin in this source so the shell can list, search,
+# and compat-check without a full clone. Keep one [[plugin]] row per plugin
+# subdirectory, and bump `version` / `updated_at` whenever a plugin changes.
+
+[[plugin]]
+id           = "celestiat/crosshair"
+name         = "Crosshair"
+version      = "1.0.0"
+updated_at   = 1793008220
+added_at     = 1793008220
+author       = "celestiat"
+license      = "MIT"
+icon         = "crosshair"
+description  = "Click-through fullscreen aiming crosshair on the overlay layer, toggled from a bar widget. Fully customizable."
+deprecated   = false
+plugin_api   = 36
+tags         = ["gaming", "utility", "bar"]
